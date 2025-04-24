@@ -1,5 +1,10 @@
 ## FIRST PART OF WGCNA: create WGCNA object to obtain modules and TOM adjacency
 
+#---
+#! NOTE: since some calculations are computational heavy, it would be better to run this R file with the bash script
+#!       "1_create_object_script.sh" on work nodes                                              
+#---
+
 # BiocManager::install("impute") # in order to install WGCNA
 # BiocManager::install("WGCNA") # in order to install WGCNA
 # install.packages('flashClust')

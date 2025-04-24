@@ -1,10 +1,9 @@
 # Folders
-/data
-/network_plot
-/output
-*/*/output
-*/*/plot
-*/*/data
+data
+network_plot
+output
+plot
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
