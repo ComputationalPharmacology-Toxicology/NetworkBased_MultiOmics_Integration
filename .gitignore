@@ -1,7 +1,9 @@
 # Folders
-*data
-*/output
+/data
+/network_plot
+/output
 */*/output
+*/*/plot
 */*/data
 
 # Byte-compiled / optimized / DLL files
