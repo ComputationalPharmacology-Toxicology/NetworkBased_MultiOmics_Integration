@@ -1,19 +1,21 @@
-## FIRST PART OF WGCNA: create WGCNA object to obtain modules and TOM adjacency
+## FIRST PART OF WGCNA: create WGCNA object to obtain modules
 
 #---
 #! NOTE: since some calculations are computational heavy, it would be better to run this R file with the bash script
 #!       "1_create_object_script.sh" on work nodes                                              
 #---
 
+# # install libraries
 # BiocManager::install("impute") # in order to install WGCNA
 # BiocManager::install("WGCNA") # in order to install WGCNA
 # install.packages('flashClust')
 # BiocManager::install("rversions") # in order to install devtools
 # install.packages("xml2") # in order to install devtools
 # install.packages("devtools")
- 
 # BiocManager::install('devtools')
 # devtools::install_github("kevinblighe/CorLevelPlot")
+
+# load libraries
 library(devtools)
 library(WGCNA)
 library(flashClust)
@@ -32,26 +34,26 @@ out_path <- file.path("WGCNA_mRNA/output")
 plot_path <- file.path("WGCNA_mRNA/plot")
 
 ## 1. Get data from nf-core piepeline ----------------------------------------------------------------------
-# Load txt file created by nf-core pipeline, with the number of reads for each peak 
+# Load txt file with the number of reads
 file = file.path(initial_path, 'salmon.merged.gene_counts.tsv')
-# Read the file and skip the first line
-counts_data <- read.delim(file, sep = "\t", header = TRUE)#, colClasses = c(rep("character",2), rep("integer", 12)))
+counts_data <- read.delim(file, sep = "\t", header = TRUE)
 
-dim(counts_data) # 62710 number of total genes
+dim(counts_data)
 head(counts_data)
+
 # check that gene_id and gene_name are always the same
 all(counts_data$gene_id==counts_data$gene_name)
-# Rename rows
+# Set row names
 rownames(counts_data) <- counts_data$gene_id
 counts_data <- counts_data[ , !names(counts_data) %in% c("gene_id", "gene_name")]
 head(counts_data)
 
-# Round and convert numeric columns to integer (in order to create a dds object later)
+# Round and convert numeric columns to integer (to create a dds object later)
 counts_data[] <- lapply(counts_data, function(x) {
   if (is.numeric(x)) {
-    as.integer(round(x))  # Round and convert to integer
+    as.integer(round(x))
   } else {
-    x  # Leave non-numeric columns unchanged
+    x 
   }
 })
 sapply(counts_data, is.integer)
@@ -59,13 +61,13 @@ head(counts_data)
 dim(counts_data)
 
 
-## 2A. Detect & exclude outliers
+## 2A. Detect & exclude outliers ----------------------------------------------------------------------
 gsg <- goodSamplesGenes(t(counts_data))
 summary(gsg)
 gsg$allOK
 
-table(gsg$goodGenes) # there are 17413 genes we need to exclude
-table(gsg$goodSamples) # all samples are ok
+table(gsg$goodGenes)
+table(gsg$goodSamples)
 
 # exclude genes
 data <- counts_data[gsg$goodGenes == TRUE, ]
@@ -80,12 +82,10 @@ dev.off()
 # check again samples for outliers with another method (pca)
 pca <- prcomp(t(data))
 pca.dat <- pca$x
-
 pca.var <- pca$sdev^2
 pca.var.percent <- round(pca.var/sum(pca.var)*100, digits = 2)
-
 pca.dat <- as.data.frame(pca.dat)
-
+# plot to see if there are outliers
 pdf(file.path(plot_path, '1_pcaplot_out_detect.pdf'))
 ggplot(pca.dat, aes(PC1, PC2)) +
   geom_point() +
@@ -96,21 +96,16 @@ dev.off()
 
 
 # 2B. Exclude genes with low variance ----------------------------------------------------------------------
-# It was not in the original pipeline by bioinformagician, it was a suggestion by chatGPT because we found later a high value for beta (26)
-# Calcolare la varianza per ogni gene
 geneVariance <- apply(data, 1, var)
-
-# Soglia di varianza (ad esempio, tenere solo i geni nel top 75%)
 threshold <- quantile(geneVariance, 0.30)  
 data_filtered <- data[geneVariance > threshold, ]
 
-# Controllare quanti geni sono stati filtrati
-dim(data)#45297
-dim(data_filtered)#31670
+dim(data)
+dim(data_filtered)
 
 
 # 3. Normalization ----------------------------------------------------------------------
-# create a deseq2 dataset that will be the input for the next steps
+# create a deseq2 dataset
 colnames(data_filtered)
 # Create colData
 sampletype <- as.factor(c(rep('CTR',6), rep('GEMTAX', 5), rep('SIM',6), rep('VPA', 6), 
@@ -129,8 +124,8 @@ dds <- DESeqDataSetFromMatrix(countData = data_filtered,
 dim(data_filtered)
 ## remove all genes with counts < 30 in more than 75% of samples (34*0.75=9)
 ## suggested by WGCNA on RNAseq FAQ
-dds75 <- dds[rowSums(counts(dds) >= 30) >= 26,] #25.5
-nrow(dds75) # 13569 genes
+dds75 <- dds[rowSums(counts(dds) >= 30) >= 26,]
+nrow(dds75)
 
 # perform variance stabilization
 dds_norm <- vst(dds75)
@@ -143,9 +138,8 @@ saveRDS(norm.counts, file = file.path(out_path, "norm_counts.rds"))
 
 
 # 4. Network Construction  ---------------------------------------------------
-# Choose a set of soft-thresholding powers
+# Choose a set of soft-thresholding powers to then select the best
 power <- c(c(1:10), seq(from = 12, to = 30, by = 2))
-
 # Call the network topology analysis function
 sft <- pickSoftThreshold(norm.counts,
                   powerVector = power,
@@ -171,7 +165,7 @@ a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
 grid.arrange(a1, a2, nrow = 2)
 dev.off()
 
-# based on the author's table we choose 14 (see ppt on OneDrive projects/remedi4all/wcgna/presentazioni)
+# based on the author's table we choose 14, the plot shows we never are above 0.8 as suggested
 soft_power <- 14
 
 # convert matrix to numeric
@@ -181,7 +175,6 @@ norm.counts[] <- sapply(norm.counts, as.numeric)
 adjacency <- adjacency(norm.counts, 
                        type = "signed",
                        power = soft_power)
-adjacency[1:10,1:10]
 str(adjacency)
 # save for later
 saveRDS(adjacency, file = file.path(out_path, "adjacency.rds"))
@@ -190,7 +183,7 @@ saveRDS(adjacency, file = file.path(out_path, "adjacency.rds"))
 temp_cor <- cor
 cor <- WGCNA::cor
 
-# memory estimate w.r.t blocksize
+# run # create modules
 bwnet <- blockwiseModules(norm.counts,
                  maxBlockSize = nrow(dds75)+10,
                  TOMType = "signed",
@@ -204,5 +197,5 @@ bwnet <- blockwiseModules(norm.counts,
 
 cor <- temp_cor
 
-# save output to use it later
+# save output
 saveRDS(bwnet, file = file.path(out_path, "bwnet.rds"))

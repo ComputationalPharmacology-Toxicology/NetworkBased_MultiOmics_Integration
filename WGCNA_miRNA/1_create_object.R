@@ -1,14 +1,16 @@
 ## FIRST PART OF WGCNA: create WGCNA object to obtain modules
 
+# # install libraries
 # BiocManager::install("impute") # in order to install WGCNA
 # BiocManager::install("WGCNA") # in order to install WGCNA
 # install.packages('flashClust')
 # BiocManager::install("rversions") # in order to install devtools
 # install.packages("xml2") # in order to install devtools
 # install.packages("devtools")
- 
 # BiocManager::install('devtools')
 # devtools::install_github("kevinblighe/CorLevelPlot")
+
+# load libraries
 library(devtools)
 library(WGCNA)
 library(flashClust)
@@ -27,28 +29,27 @@ out_path <- file.path("WGCNA_miRNA/output")
 plot_path <- file.path("WGCNA_miRNA/plot")
 
 ## 1. Get data from nf-core piepeline ----------------------------------------------------------------------
-# Load txt file created by nf-core pipeline, with the number of reads for each peak 
+# Load txt file with the number of reads
 file = file.path(initial_path, 'mature_counts.csv')
-# Read the file and skip the first line
-counts_data <- read.csv(file, sep = ",", header = TRUE, row.names=1)#, colClasses = c(rep("character",2), rep("integer", 12)))
+counts_data <- read.csv(file, sep = ",", header = TRUE, row.names=1)
 counts_data <- counts_data[order(rownames(counts_data)), ] # order samples by name
 rownames(counts_data)
-counts_data <- t(counts_data) # Get the transposed matrix of counts_data
+counts_data <- t(counts_data)
 
-dim(counts_data) # 2464 number of total genes
+dim(counts_data)
 head(counts_data,10)
 
 # Check if all number are integers 
 all(sapply(counts_data, is.integer))
 
 
-## 2A. Detect & exclude outliers
+## 2A. Detect & exclude outliers ----------------------------------------------------------------------
 gsg <- goodSamplesGenes(t(counts_data))
 summary(gsg)
 gsg$allOK
 
-table(gsg$goodGenes) # all genes are ok
-table(gsg$goodSamples) # all samples are ok
+table(gsg$goodGenes)
+table(gsg$goodSamples)
 
 # exclude genes
 data <- counts_data[gsg$goodGenes == TRUE, ]
@@ -63,12 +64,10 @@ dev.off()
 # check again samples for outliers with another method (pca)
 pca <- prcomp(t(data))
 pca.dat <- pca$x
-
 pca.var <- pca$sdev^2
 pca.var.percent <- round(pca.var/sum(pca.var)*100, digits = 2)
-
 pca.dat <- as.data.frame(pca.dat)
-
+# plot to see if there are outliers
 pdf(file.path(plot_path, '1_pcaplot_out_detect.pdf'))
 ggplot(pca.dat, aes(PC1, PC2)) +
   geom_point() +
@@ -79,23 +78,17 @@ dev.off()
 
 
 # 2B. Exclude genes with low variance ----------------------------------------------------------------------
-# It was not in the original pipeline by bioinformagician, it was a suggestion by chatGPT because we found later a high value for beta (26)
-# Calcolare la varianza per ogni gene
+# We are skipping this step for miRNAs (only did it for mRNAs)
 # geneVariance <- apply(data, 1, var)
-
-# Soglia di varianza (ad esempio, tenere solo i geni nel top 75%)
 # threshold <- quantile(geneVariance, 0.10)  
 data_filtered <- data#[geneVariance > threshold, ]
 
-# Controllare quanti geni sono stati filtrati
-dim(data)#2464
-dim(data_filtered)#2464
-
-# We are skipping it for miRNAs
+dim(data)
+dim(data_filtered)
 
 
 # 3. Normalization ----------------------------------------------------------------------
-# create a deseq2 dataset that will be the input for the next steps
+# create a deseq2 dataset
 colnames(data_filtered)
 # Create colData
 sampletype <- as.factor(c(rep('CTR',6), rep('GEMTAX', 5), rep('SIM',6), rep('VPA', 6), 
@@ -113,13 +106,13 @@ dds <- DESeqDataSetFromMatrix(countData = data_filtered,
 
 dim(data_filtered)
 ## remove all genes with counts < 1 in more than 25% of samples (34*0.25=8.5)
-## suggested by WGCNA on RNAseq FAQ
+## less stringent than what suggested by WGCNA on RNAseq FAQ because here we have miRNAs
 dds75 <- dds[rowSums(counts(dds) >= 1) >= 8,]
-nrow(dds75) # 1419 genes
+nrow(dds75)
 
 # perform variance stabilization
 # dds_norm <- vst(dds)
-dds_norm <- varianceStabilizingTransformation(dds75)
+dds_norm <- varianceStabilizingTransformation(dds75) # having few rows we can not use vst()
 
 # get normalized counts
 norm.counts <- assay(dds_norm) %>% 
@@ -129,9 +122,8 @@ saveRDS(norm.counts, file = file.path(out_path, "norm_counts.rds"))
 
 
 # 4. Network Construction  ---------------------------------------------------
-# Choose a set of soft-thresholding powers
+# Choose a set of soft-thresholding powers to then select the best
 power <- c(c(1:10), seq(from = 12, to = 30, by = 2))
-
 # Call the network topology analysis function
 sft <- pickSoftThreshold(norm.counts,
                   powerVector = power,
@@ -157,7 +149,7 @@ a2 <- ggplot(sft.data, aes(Power, mean.k., label = Power)) +
 grid.arrange(a1, a2, nrow = 2)
 dev.off()
 
-# based on the author's table we choose 14 (see ppt on OneDrive projects/remedi4all/wcgna/presentazioni)
+# based on the plots we chose 6
 soft_power <- 6
 
 # convert matrix to numeric
@@ -167,7 +159,6 @@ norm.counts[] <- sapply(norm.counts, as.numeric)
 adjacency <- adjacency(norm.counts, 
                        type = "signed",
                        power = soft_power)
-adjacency[1:10,1:10]
 str(adjacency)
 # save for later
 saveRDS(adjacency, file = file.path(out_path, "adjacency.rds"))
@@ -176,7 +167,7 @@ saveRDS(adjacency, file = file.path(out_path, "adjacency.rds"))
 temp_cor <- cor
 cor <- WGCNA::cor
 
-# memory estimate w.r.t blocksize
+# create modules
 bwnet <- blockwiseModules(norm.counts,
                  maxBlockSize = nrow(dds75)+10,
                  TOMType = "signed",
@@ -190,5 +181,5 @@ bwnet <- blockwiseModules(norm.counts,
 
 cor <- temp_cor
 
-# save output to use it later
+# save output
 saveRDS(bwnet, file = file.path(out_path, "bwnet.rds"))
