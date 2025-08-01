@@ -125,7 +125,7 @@ dim(data_filtered)
 ## remove all genes with counts < 30 in more than 75% of samples (34*0.75=9)
 ## suggested by WGCNA on RNAseq FAQ
 dds75 <- dds[rowSums(counts(dds) >= 30) >= 26,]
-nrow(dds75)
+nrow(dds75) #13569 genes
 
 # perform variance stabilization
 dds_norm <- vst(dds75)

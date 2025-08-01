@@ -108,7 +108,7 @@ dim(data_filtered)
 ## remove all genes with counts < 1 in more than 25% of samples (34*0.25=8.5)
 ## less stringent than what suggested by WGCNA on RNAseq FAQ because here we have miRNAs
 dds75 <- dds[rowSums(counts(dds) >= 1) >= 8,]
-nrow(dds75)
+nrow(dds75) #1419 genes 
 
 # perform variance stabilization
 # dds_norm <- vst(dds)
