@@ -1,0 +1,31 @@
+{
+    "project":"ORA for WGCNA modules",
+    "top_num": 50,
+    "similarity": "Jaccard",
+    "data": [
+      {
+        "platform_name":"rna-seq red module",
+        "platform_abbr":"red",
+        "gmt_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/GSEA_MSigDB_gmt/GOKeggReactomeWP_sets_INLINE.gmt",
+        "score_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/output/rna_red_score.txt"
+      },
+      {
+        "platform_name":"rna-seq green module",
+        "platform_abbr":"green",
+        "gmt_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/GSEA_MSigDB_gmt/GOKeggReactomeWP_sets_INLINE.gmt",
+        "score_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/output/rna_green_score.txt"
+      },
+      {
+        "platform_name":"rna-seq pink module",
+        "platform_abbr":"pink",
+        "gmt_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/GSEA_MSigDB_gmt/GOKeggReactomeWP_sets_INLINE.gmt",
+        "score_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/output/rna_pink_score.txt"
+      },
+      {
+        "platform_name":"rna-seq magenta module",
+        "platform_abbr":"magenta",
+        "gmt_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/GSEA_MSigDB_gmt/GOKeggReactomeWP_sets_INLINE.gmt",
+        "score_file":"ShortPaper_CIBB25/WGCNA_mRNA/ORA/output/rna_magenta_score.txt"
+      }
+    ]
+  }
