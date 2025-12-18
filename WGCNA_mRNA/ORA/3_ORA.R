@@ -92,7 +92,7 @@ for (file in file_list) {
     gene = mapped_genes,
     TERM2GENE = gmt_file,
     universe = gene_symbol_noENSG,
-    pvalueCutoff = 0.05,
+    pvalueCutoff = 0.005,
     pAdjustMethod = "BH",
     minGSSize = 10,
     maxGSSize = 500
