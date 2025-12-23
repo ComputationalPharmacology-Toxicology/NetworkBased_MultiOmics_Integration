@@ -37,6 +37,7 @@ length(gene_symbol) #19303
 # remove ENSBL genes
 gene_symbol_noENSG <- gene_symbol[!grepl("^ENSG", gene_symbol)]
 length(gene_symbol_noENSG) #16243
+writeLines(gene_symbol_noENSG, "ShortPaper_CIBB25/WGCNA_mRNA/ORA/output/gene_symbol_ORAuniverse.txt")
 
 
 ############# ORA analysis for all the VSGT modules in a for cycle #############
